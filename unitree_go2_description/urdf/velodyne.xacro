@@ -62,11 +62,17 @@
                         <min_angle>-3.14159</min_angle>
                         <max_angle>3.14159</max_angle>
                     </horizontal>
-                    <vertical>
+                    <!-- <vertical>
                         <samples>16</samples>
                         <resolution>1</resolution>
                         <min_angle>-0.261799</min_angle>
                         <max_angle>0.261799</max_angle>
+                    </vertical> -->
+                    <vertical>
+                        <samples>32</samples>
+                        <resolution>1</resolution>
+                        <min_angle>-0.523599</min_angle>   <!-- -30 deg -->
+                        <max_angle>0.261799</max_angle>    <!-- +15 deg -->
                     </vertical>
                 </scan>
                 <range>

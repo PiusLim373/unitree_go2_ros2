@@ -51,20 +51,26 @@ CHAMP (Coupled Hybrid Automata for Mobile Platforms) is an open-source developme
 
 ```bash
 sudo apt update
-sudo apt install ros-jazzy-gazebo-ros2-control
+sudo apt install ros-jazzy-ros-gz
+sudo apt install ros-jazzy-gz-ros2-control
 sudo apt install ros-jazzy-xacro
 sudo apt install ros-jazzy-robot-localization
 sudo apt install ros-jazzy-ros2-controllers
 sudo apt install ros-jazzy-ros2-control
 sudo apt install ros-jazzy-velodyne
 sudo apt install ros-jazzy-velodyne-description
+sudo apt install ros-jazzy-librealsense2*
+sudo apt install ros-jazzy-realsense2-*
+sudo apt install ros-jazzy-rtabmap-ros
+sudo apt install ros-jazzy-navigation2
+sudo apt install ros-jazzy-nav2-bringup
 ```
 
 ### 2. Clone and Install CHAMP Controller and Go2 Simulation Packages
 
 ```bash
 cd ~/ros2_ws/src
-git clone https://github.com/khaledgabr77/unitree_go2_ros2
+git clone https://github.com/PiusLim373/unitree_go2_ros2
 ```
 
 ### 3. Install Dependencies
@@ -170,6 +176,56 @@ The world's GPS origin is defined in `unitree_go2_description/worlds/default.sdf
 ```
 
 > **Note:** The `position_covariance` field in the bridged message will be all-zeros (`COVARIANCE_TYPE_UNKNOWN`) because the Gazebo→ROS bridge does not carry covariance. When integrating with `robot_localization`, set the covariance override in your EKF config or add a relay node that stamps diagonal covariance values matching the noise above.
+
+### Mapping
+
+Launch the following in **3 separate terminals**:
+
+**Terminal 1 — Simulation:**
+```bash
+ros2 launch unitree_go2_sim unitree_go2_launch.py
+```
+
+**Terminal 2 — RTABMap mapping:**
+```bash
+ros2 launch unitree_go2_sim rtabmap_mapping.launch.py \
+  args:="--Reg/Strategy 1 --Grid/Sensor 0 \
+    --Icp/PointToPlane true --Icp/VoxelSize 0.1 --Icp/Iterations 10 --Icp/MaxCorrespondenceDistance 0.1 \
+    --Grid/MinGroundHeight -0.1 --Grid/MaxGroundHeight 0.1 --Grid/MaxObstacleHeight 2.0 \
+    --Grid/RangeMin 0.75"
+```
+
+**Terminal 3 — Teleoperation:**
+```bash
+ros2 run teleop_twist_keyboard teleop_twist_keyboard
+```
+
+Drive the robot around to build the map. The map is automatically saved to `~/.ros/rtabmap.db` when RTABMap is closed.
+
+### Navigation
+
+Launch the following in **3 separate terminals**:
+
+**Terminal 1 — Simulation:**
+```bash
+ros2 launch unitree_go2_sim unitree_go2_launch.py
+```
+
+**Terminal 2 — RTABMap localization:**
+```bash
+ros2 launch unitree_go2_sim rtabmap_localization.launch.py \
+  args:="--Reg/Strategy 1 --Grid/Sensor 0 \
+    --Icp/PointToPlane true --Icp/VoxelSize 0.1 --Icp/Iterations 10 --Icp/MaxCorrespondenceDistance 0.1 \
+    --Grid/MinGroundHeight -0.1 --Grid/MaxGroundHeight 0.1 --Grid/MaxObstacleHeight 2.0 \
+    --Grid/RangeMin 0.75"
+```
+
+**Terminal 3 — Navigation stack:**
+```bash
+ros2 launch unitree_go2_sim navigation_launch.py
+```
+
+In RViz, use **2D Pose Estimate** to initialise the robot's location on the map, then use **Nav2 Goal** to send a navigation goal.
 
 ## Tuning Gait Parameters
 

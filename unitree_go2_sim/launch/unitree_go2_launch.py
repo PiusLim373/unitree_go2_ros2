@@ -10,6 +10,7 @@ from launch.actions import (
     ExecuteProcess,
     IncludeLaunchDescription,
     GroupAction,
+    SetEnvironmentVariable,
     TimerAction,
 )
 from launch.conditions import IfCondition
@@ -61,8 +62,8 @@ def generate_launch_description():
     declare_gui = DeclareLaunchArgument(
         "gui", default_value="true", description="Use gui"
     )
-    declare_world_init_x = DeclareLaunchArgument("world_init_x", default_value="0.0")
-    declare_world_init_y = DeclareLaunchArgument("world_init_y", default_value="0.0")
+    declare_world_init_x = DeclareLaunchArgument("world_init_x", default_value="-2.0")
+    declare_world_init_y = DeclareLaunchArgument("world_init_y", default_value="0.5")
     declare_world_init_z = DeclareLaunchArgument("world_init_z", default_value="0.375")
     declare_world_init_heading = DeclareLaunchArgument(
         "world_init_heading", default_value="0.0"
@@ -183,10 +184,18 @@ def generate_launch_description():
         executable='static_transform_publisher',
         parameters=[{'use_sim_time': use_sim_time}],
         arguments=[
-            '--x', '0', '--y', '0', '--z', '0',
+            '--x', '0', '--y', '0', '--z', '0.25',
             '--roll', '0', '--pitch', '0', '--yaw', '0',
             '--frame-id', 'base_footprint', '--child-frame-id', 'base_link'
         ],
+    )
+
+    odom_tf_broadcaster = Node(
+        package='unitree_go2_sim',
+        executable='odom_tf_broadcaster.py',
+        name='odom_tf_broadcaster',
+        output='screen',
+        parameters=[{'use_sim_time': use_sim_time}],
     )
 
     rviz2 = Node(
@@ -199,7 +208,22 @@ def generate_launch_description():
     )
     
     pkg_ros_gz_sim = get_package_share_directory('ros_gz_sim')
-    
+
+    realsense2_share_parent = os.path.dirname(
+        get_package_share_directory('realsense2_description')
+    )
+
+    gz_resource_path = SetEnvironmentVariable(
+        name='GZ_SIM_RESOURCE_PATH',
+        value=[
+            os.environ.get('GZ_SIM_RESOURCE_PATH', ''),
+            ':',
+            os.path.join(unitree_go2_description, 'models'),
+            ':',
+            realsense2_share_parent,
+        ],
+    )
+
     # Setup to launch the simulator and Gazebo world
     gz_sim = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -208,7 +232,7 @@ def generate_launch_description():
             'gz_args': [PathJoinSubstitution([
                 unitree_go2_description,
                 'worlds',
-                'default.sdf'
+                'turtlebot3_house.world'
             ]), ' -r']  # Add -r flag to start unpaused
         }.items(),
     )
@@ -247,11 +271,11 @@ def generate_launch_description():
             '/odom@nav_msgs/msg/Odometry@gz.msgs.Odometry',
             '/gps/fix@sensor_msgs/msg/NavSatFix[gz.msgs.NavSat',
             '/rgb_image@sensor_msgs/msg/Image@gz.msgs.Image',
-            # D455 RGBD camera bridges
-            '/d455/image@sensor_msgs/msg/Image[gz.msgs.Image',
-            '/d455/depth_image@sensor_msgs/msg/Image[gz.msgs.Image',
-            '/d455/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked',
-            '/d455/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
+            # d435 RGBD camera bridges
+            '/d435/image@sensor_msgs/msg/Image[gz.msgs.Image',
+            '/d435/depth_image@sensor_msgs/msg/Image[gz.msgs.Image',
+            '/d435/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked',
+            '/d435/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
 
             # ROS to Gazebo
             '/cmd_vel@geometry_msgs/msg/Twist]gz.msgs.Twist',
@@ -320,6 +344,7 @@ def generate_launch_description():
             declare_description_path, 
             
             # Gazebo and robot nodes first
+            gz_resource_path,
             gz_sim,
             robot_state_publisher_node,
             gazebo_spawn_robot,
@@ -330,12 +355,13 @@ def generate_launch_description():
             state_estimator_node,
             
             # EKF nodes for localization
-            base_to_footprint_ekf,
-            footprint_to_odom_ekf,
+            # base_to_footprint_ekf,
+            # footprint_to_odom_ekf,
             
             # TF publishers for frame connections
-            map_to_odom_tf_node,
+            # map_to_odom_tf_node,
             base_footprint_to_base_link_tf_node,
+            odom_tf_broadcaster,
             
             # Controller spawners that handle the complete lifecycle
             controller_spawner_js,
